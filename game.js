@@ -23,9 +23,51 @@ function finishVideo(){video.pause();video.removeAttribute('src');video.load();c
 $('#startBtn').addEventListener('click',()=>story('abertura.mp4',loadLevel));
 $('#videoPlay').addEventListener('click',()=>{video.play();$('#videoPlay').classList.add('hidden')});video.addEventListener('ended',finishVideo);$('#skipVideo').addEventListener('click',finishVideo);
 $('#muteBtn').addEventListener('click',()=>setMuted(!muted));$('#replayBtn').addEventListener('click',()=>playAudio(lastAudio||levels[level].start));
-$('#photoFrame').addEventListener('click',e=>{if(solved)return;const r=$('#gamePhoto').getBoundingClientRect();if(!r.width)return;const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100,[bx,by,bw,bh]=levels[level].box;if(x>=bx&&x<=bx+bw&&y>=by&&y<=by+bh){solved=true;const s=$('#successSpot');s.style.left=(bx+bw/2)+'%';s.style.top=(by+bh/2)+'%';s.classList.remove('hidden');$('#hintSpot').classList.add('hidden');$('#message').textContent='Você me achou! Muito bem!';playAudio(levels[level].ok);$('#nextBtn').classList.remove('hidden');$('#hintBtn').disabled=true;$('#loupeBtn').disabled=true}else{wrong++;const rip=$('#tapRipple');rip.style.left=x+'%';rip.style.top=y+'%';rip.classList.remove('hidden');setTimeout(()=>rip.classList.add('hidden'),450);$('#message').textContent=['Quase! Olhe mais um pouquinho.','Ainda não! Procure com bastante atenção.','Hummm... eu estou muito bem escondido!'][(wrong-1)%3];playAudio(['erro_01.mp3','erro_02.mp3','erro_03.mp3'][(wrong-1)%3]);if(wrong>=2&&hints===0){$('#hintBtn').disabled=false;setTimeout(()=>playAudio('oferecer_pista.mp3'),900)}}});
+$('#photoFrame').addEventListener('click',e=>{if(solved)return;const r=$('#gamePhoto').getBoundingClientRect();if(!r.width)return;const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100,[bx,by,bw,bh]=levels[level].box;if(x>=bx&&x<=bx+bw&&y>=by&&y<=by+bh){solved=true;const s=$('#successSpot');s.style.left=(bx+bw/2)+'%';s.style.top=(by+bh/2)+'%';s.classList.remove('hidden');$('#hintSpot').classList.add('hidden');$('#message').textContent='Você me achou! Muito bem!';playAudio(levels[level].ok);$('#nextBtn').classList.remove('hidden');$('#hintBtn').disabled=true;$('#loupeBtn').disabled=true}else{wrong++;const rip=$('#tapRipple');rip.style.left=x+'%';rip.style.top=y+'%';rip.classList.remove('hidden');setTimeout(()=>rip.classList.add('hidden'),450);$('#message').textContent=['Quase! Olhe mais um pouquinho.','Ainda não! Procure com bastante atenção.','Hummm... eu estou muito bem escondido!'][(wrong-1)%3];playAudio(['erro_01.mp3','erro_02.mp3','erro_03.mp3'][(wrong-1)%3]);if(wrong>=1&&hints===0){$('#hintBtn').disabled=false;setTimeout(()=>playAudio('oferecer_pista.mp3'),900)}}});
 $('#hintBtn').addEventListener('click',()=>{if(solved)return;hints++;if(hints===1){playAudio(levels[level].h1);$('#message').textContent='Pista 1 — escute com atenção!';$('#hintBtn').textContent='💡 OUTRA PISTA'}else{playAudio(levels[level].h2);$('#message').textContent='Pista 2 — agora ficou mais fácil!';$('#hintBtn').disabled=true;$('#loupeBtn').disabled=false;setTimeout(()=>playAudio('oferecer_lupa.mp3'),1300)}});
 $('#loupeBtn').addEventListener('click',()=>{const [x,y,w,h]=levels[level].box,s=$('#hintSpot'),pad=5;s.style.left=Math.max(0,x-pad)+'%';s.style.top=Math.max(0,y-pad)+'%';s.style.width=Math.min(100-x+pad,w+pad*2)+'%';s.style.height=Math.min(100-y+pad,h+pad*2)+'%';s.classList.remove('hidden');$('#message').textContent='A lupa mostrou a região. Agora encontre o Sr. Alfabeto!'});
 $('#nextBtn').addEventListener('click',()=>{if(level===4){level++;story('meio.mp4',loadLevel)}else if(level===9){celebrate()}else{level++;loadLevel()}});
-function celebrate(){show('#celebrateScreen');setTimeout(()=>{playAudio('transicao_esteira.mp3');setTimeout(()=>story('esteira.mp4',()=>{playAudio('esteira_final.mp3');setTimeout(()=>story('final.mp4',()=>show('#finalScreen')),1200)}),1300)},1700)}
+
+function playCheckout(){
+  show('#videoScreen');
+  videoNext=null;
+  video.src=V+'esteira.mp4';
+  video.currentTime=0;
+  $('#videoPlay').classList.add('hidden');
+
+  let jokePlayed=false;
+  const startJoke=()=>{
+    if(jokePlayed)return;
+    jokePlayed=true;
+    playAudio('esteira_final.mp3');
+  };
+  const onTime=()=>{
+    if(video.duration && video.duration-video.currentTime<=3.2) startJoke();
+  };
+  const finish=()=>{
+    video.removeEventListener('timeupdate',onTime);
+    video.removeEventListener('ended',finish);
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    if(!jokePlayed) startJoke();
+
+    const openFinal=()=>story('final.mp4',()=>show('#finalScreen'));
+    if(muted || voice.ended || voice.paused) openFinal();
+    else voice.addEventListener('ended',openFinal,{once:true});
+  };
+
+  video.addEventListener('timeupdate',onTime);
+  video.addEventListener('ended',finish);
+  video.play().catch(()=>$('#videoPlay').classList.remove('hidden'));
+}
+
+function celebrate(){
+  show('#celebrateScreen');
+  setTimeout(()=>{
+    playAudio('transicao_esteira.mp3');
+    setTimeout(playCheckout,1300);
+  },1700);
+}
+
 $('#restartBtn').addEventListener('click',()=>{level=0;wrong=0;hints=0;solved=false;lastAudio=null;show('#startScreen')});
